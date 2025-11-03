@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bubble Pop Frenzy 🎈</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="game-container">
+        <div class="header">
+            <h1>🎈 Bubble Pop Frenzy</h1>
+            <div class="stats">
+                <div class="stat">
+                    <span class="label">Punteggio:</span>
+                    <span class="value" id="score">0</span>
+                </div>
+                <div class="stat">
+                    <span class="label">Combo:</span>
+                    <span class="value combo" id="combo">x1</span>
+                </div>
+                <div class="stat">
+                    <span class="label">Record:</span>
+                    <span class="value" id="highscore">0</span>
+                </div>
+            </div>
+        </div>
+
+        <canvas id="gameCanvas"></canvas>
+
+        <div class="game-over" id="gameOver">
+            <h2>Game Over! 🎮</h2>
+            <p>Punteggio finale: <span id="finalScore">0</span></p>
+            <p>Miglior combo: <span id="maxCombo">0</span></p>
+            <button id="restartBtn">Gioca Ancora</button>
+        </div>
+
+        <div class="instructions">
+            <p>🎯 Clicca le bolle prima che spariscano!</p>
+            <p>💫 Click consecutivi creano combo per più punti!</p>
+            <p>⚡ Le bolle dorate valgono il doppio!</p>
+        </div>
+    </div>
+
+    <script src="game.js"></script>
+</body>
+</html>
