@@ -1,9 +1,30 @@
 import { BehaviorSubject } from 'rxjs'
 import { SSHConnection, SSHProfile } from '@/types'
+import { invoke } from '@tauri-apps/api/core'
+
+interface SSHResponse {
+  success: boolean
+  message: string
+  data?: string
+}
 
 class SSHManager {
   private connections$ = new BehaviorSubject<SSHConnection[]>([])
   private activeConnection$ = new BehaviorSubject<SSHConnection | null>(null)
+  private isTauri: boolean = false
+
+  constructor() {
+    this.detectTauri()
+  }
+
+  // Detect if running in Tauri
+  private detectTauri() {
+    try {
+      this.isTauri = '__TAURI_INTERNALS__' in window
+    } catch {
+      this.isTauri = false
+    }
+  }
 
   // Get observable for connections
   getConnections$() {
@@ -30,17 +51,30 @@ class SSHManager {
     this.connections$.next([...currentConnections, connection])
 
     try {
-      // In a real implementation with Electron, this would use the ssh2 library
-      // via IPC to the main process. For now, we'll simulate a connection.
+      if (this.isTauri) {
+        // Use Tauri API for real SSH connection
+        const response = await invoke<SSHResponse>('ssh_connect', {
+          config: {
+            host: profile.host,
+            port: profile.port,
+            username: profile.username,
+            password: profile.password,
+            private_key_path: profile.privateKeyPath,
+          },
+        })
 
-      // Simulate connection delay
-      await new Promise((resolve) => setTimeout(resolve, 1000))
-
-      // Update status to connected
-      this.updateConnectionStatus(id, 'connected')
-
-      // Set as active connection
-      this.activeConnection$.next(this.getConnection(id)!)
+        if (response.success) {
+          this.updateConnectionStatus(id, 'connected')
+          this.activeConnection$.next(this.getConnection(id)!)
+        } else {
+          throw new Error(response.message)
+        }
+      } else {
+        // Fallback to mock for browser
+        await new Promise((resolve) => setTimeout(resolve, 1000))
+        this.updateConnectionStatus(id, 'connected')
+        this.activeConnection$.next(this.getConnection(id)!)
+      }
 
       return id
     } catch (error) {
@@ -54,15 +88,18 @@ class SSHManager {
     const connection = this.getConnection(id)
     if (!connection) return
 
-    // Close SSH connection
-    // In a real implementation, this would close the ssh2 connection
+    try {
+      if (this.isTauri) {
+        await invoke('ssh_disconnect')
+      }
 
-    // Update status
-    this.updateConnectionStatus(id, 'disconnected')
+      this.updateConnectionStatus(id, 'disconnected')
 
-    // If this was the active connection, clear it
-    if (this.activeConnection$.value?.id === id) {
-      this.activeConnection$.next(null)
+      if (this.activeConnection$.value?.id === id) {
+        this.activeConnection$.next(null)
+      }
+    } catch (error) {
+      console.error('Error disconnecting:', error)
     }
   }
 
@@ -73,13 +110,21 @@ class SSHManager {
       throw new Error('Not connected')
     }
 
-    // In a real implementation, this would send the command via ssh2
-    // For now, simulate a response
-    return new Promise((resolve) => {
-      setTimeout(() => {
-        resolve(`Mock response for: ${command}`)
-      }, 100)
-    })
+    try {
+      if (this.isTauri) {
+        const response = await invoke<SSHResponse>('ssh_execute', { command })
+        return response.data || ''
+      } else {
+        // Mock response for browser
+        return new Promise((resolve) => {
+          setTimeout(() => {
+            resolve(`Mock response for: ${command}`)
+          }, 100)
+        })
+      }
+    } catch (error) {
+      throw new Error(`Command execution failed: ${(error as Error).message}`)
+    }
   }
 
   // Get connection by ID
